@@ -3,6 +3,7 @@ using AutoMapper;
 using Commander.Data;
 using Commander.Dtos;
 using Commander.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,6 +11,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Commander.Controllers
 {
     // api/commands
+    [Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class CommandsController : ControllerBase

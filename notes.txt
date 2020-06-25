@@ -1,7 +1,10 @@
 Quick notes rundown when creating a WebAPI in .Net Core 3.1 
 
-From Les Jackson's youtube videos:
+From Les Jackson's youtube video on Web API in .Net Core 3.1:
 https://www.youtube.com/watch?v=fmvcAzHpsk8
+
+From DotNet Core Central's video on JWT authentication:
+https://www.youtube.com/watch?v=vWkPdurauaA
 
 
 ****************************************************************************
@@ -73,7 +76,6 @@ https://www.youtube.com/watch?v=fmvcAzHpsk8
 				}
 			}
 
-
 	--------------------------------------------------
 	- Repository
 	--------------------------------------------------
@@ -85,8 +87,6 @@ https://www.youtube.com/watch?v=fmvcAzHpsk8
 		+ Create a /data folder
 		+ Create an Interface: <INameRepo.cs>	
 			* Add methods
-			
-
 
 	--------------------------------------------------
 	- Controller
@@ -137,7 +137,6 @@ https://www.youtube.com/watch?v=fmvcAzHpsk8
 				* Deletes all resources 
 			
 		* Try to make names self-documenting
-
 
 	--------------------------------------------------
 	- EXAMPLE: Implementing a Mock Repository 
@@ -216,7 +215,6 @@ https://www.youtube.com/watch?v=fmvcAzHpsk8
 						}
 					}
 				}
-			
 
 	--------------------------------------------------
 	- Startup ConfigureServices
@@ -241,7 +239,6 @@ https://www.youtube.com/watch?v=fmvcAzHpsk8
 				// - Transient: New instance created every time
 				services.AddScoped<ICommanderRepo, MockCommanderRepo>();
 			}
-		
 		
 	--------------------------------------------------
 	- Database - SQL Server Express
@@ -279,7 +276,6 @@ https://www.youtube.com/watch?v=fmvcAzHpsk8
 		> dotnet add package Microsoft.EntityFrameworkCore.SqlServer
 		> dotnet tool install --global dotnet-ef
 		
-		
 	--------------------------------------------------
 	- DbContext
 	--------------------------------------------------
@@ -307,7 +303,6 @@ https://www.youtube.com/watch?v=fmvcAzHpsk8
 		
 			services.AddDbContext<MyContext>(opt => opt.UseSqlServer
 					(Configuration.GetConnectionString("myConnection")));
-			
 
 	--------------------------------------------------
 	- Ef Migrations - Code First
@@ -319,10 +314,9 @@ https://www.youtube.com/watch?v=fmvcAzHpsk8
 				- Up/Down what commands this runs on the SQL Server when applied/removed
 			
 			> dotnet ef database update
-		
 
 	--------------------------------------------------
-	- Real repository 
+	- Database repository 
 	--------------------------------------------------
 
 		* In /data
@@ -369,7 +363,6 @@ https://www.youtube.com/watch?v=fmvcAzHpsk8
 					...
 					public string Foo { get; set; }
 
-
 	--------------------------------------------------
 	- Current setup
 	--------------------------------------------------
@@ -385,8 +378,7 @@ https://www.youtube.com/watch?v=fmvcAzHpsk8
 			
 		* Solutions
 			- Use a [Data Transfer Object] (DTO) to decouple internal models from external models
-			
-			
+				
 	--------------------------------------------------
 	- Create a DTO with AutoMapper
 	--------------------------------------------------
@@ -439,7 +431,6 @@ https://www.youtube.com/watch?v=fmvcAzHpsk8
 				
 		* AutoMapper should automatically map some of the simpler mappings
 		
-
 	--------------------------------------------------
 	- Controller - DI to add AutoMapper
 	--------------------------------------------------
@@ -477,7 +468,6 @@ https://www.youtube.com/watch?v=fmvcAzHpsk8
 ****************************************************************************
 ** More CRUD operations
 ****************************************************************************
-
 
 	--------------------------------------------------
 	- IRepo - Add Create and SaveChanges
@@ -559,7 +549,6 @@ https://www.youtube.com/watch?v=fmvcAzHpsk8
 			** Part of the REST specification is to return the URI to that resource
 			** The get route needs to be explicitedly named to pass it to the CreatedByRoute
 			
-
 	--------------------------------------------------
 	- Handling Updates (PUT, PATCH, DELETE)
 	--------------------------------------------------
@@ -652,3 +641,187 @@ https://www.youtube.com/watch?v=fmvcAzHpsk8
 			}
 			
 			
+****************************************************************************
+** Authentication with JWT
+****************************************************************************
+
+	--------------------------------------------------
+	- Packages
+	--------------------------------------------------
+    * nuget
+		> dotnet add package Microsoft.AspNetCore.Authentication
+            - Authentication
+		> dotnet add package System.IdentityModel.Tokens.Jwt
+            - JWT creation 
+		> dotnet add package Microsoft.AspNetCore.Authentication.JwtBearer
+            - Middlewear that lets an app receive an OpenID Connect bearer token
+
+	--------------------------------------------------
+	- Startup
+	--------------------------------------------------
+
+        Startup.Configure()
+            - Before app.UseAuthorization();
+            - Add app.UseAuthentication();
+
+	--------------------------------------------------
+	- Create an Auth controller / UserCredentials class
+	--------------------------------------------------
+
+        * In controllers
+        + Add a LoginController.cs
+            - Add an Authenticate method with a [FromBody]UserCred input
+        + Add a UserCred.cs class
+            - Add Username, Password as props
+
+
+        ex: 
+            [Route("api/[controller]")]
+            [ApiController]
+            public class LoginController : ControllerBase
+            {
+                [HttpPost("authenticate")]
+                public IActionResult Authenticate([FromBody]UserCred userCred)
+                {
+                    return Ok();
+                }
+            }
+
+	--------------------------------------------------
+	- Create an AuthenticationManager to handle authentication
+	--------------------------------------------------
+
+		+ Create a IJwtAuthenticationManager.cs interface with an Authenticate method
+			- This should return a string representing a JWT
+
+		+ Create a JwtAuthenticationManager.cs to implement this
+			- This should authenticate the user, and if successful, return a JWT
+
+		ex:
+			public class JwtAuthenticationManager : IJwtAuthenticationManager
+			{
+				// TODO: Move this to the database
+				private readonly IDictionary<string, string> users = new Dictionary<string, string>
+				{
+					{ "admin", "pass" },
+					{ "user", "pass" }
+				};
+				private readonly string key;
+
+				// Private key to encrypt the Jwt token
+				public JwtAuthenticationManager(string key) 
+				{
+					this.key = key;
+				}
+
+				public string Authenticate(string username, string password)
+				{
+					if (!users.Any(u => u.Key == username && u.Value == password))
+					{
+						return null;
+					}
+
+					var tokenHandler = new JwtSecurityTokenHandler();
+					var tokenKey = Encoding.ASCII.GetBytes(key);
+
+					// Define the token
+					var tokenDescriptor = new SecurityTokenDescriptor
+					{
+						Subject = new ClaimsIdentity(new Claim[] {
+							new Claim(ClaimTypes.Name, username)
+						}),
+						Expires = DateTime.UtcNow.AddHours(24),
+						// How the token is signed
+						SigningCredentials = new SigningCredentials(
+							new SymmetricSecurityKey(tokenKey), 
+							SecurityAlgorithms.HmacSha256Signature
+						)
+					};
+					
+					var token = tokenHandler.CreateToken(tokenDescriptor);
+					
+					return tokenHandler.WriteToken(token);
+				}
+			}
+
+	--------------------------------------------------
+	- Startup - Add Authentication
+	--------------------------------------------------
+		
+		* In Startup.ConfigureServices
+			- After services.AddControllers()
+			- Add services.AddAuthentication() --
+
+				// TODO: Move this and use a more secure key
+				var key = "Test key";
+
+				// Middleware that handles authentication and adds the Jwt bearer
+				services.AddAuthentication(x => 
+				{
+					x.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+					x.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+				}).AddJwtBearer(x => 
+				{
+					x.RequireHttpsMetadata = false;
+					x.SaveToken = true;
+					x.TokenValidationParameters = new TokenValidationParameters
+					{
+						ValidateIssuerSigningKey = true,
+						IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(key)),
+						ValidateIssuer = false,
+						ValidateAudience = false
+					};
+				});
+				
+			- Add services.AddSingleton<IJwtAuthenticationManager>(new JwtAuthenticationManager(key));
+				
+
+	--------------------------------------------------
+	- Controller - Add Authentication
+	--------------------------------------------------
+		
+		* Use DI to add the JwtAuthenticationManager
+		* Ex:
+			[Route("api/[controller]")]
+			[ApiController]
+			public class LoginController : ControllerBase
+			{
+				private readonly IJwtAuthenticationManager jwtAuthenticationManager;
+
+				public LoginController(IJwtAuthenticationManager jwtAuthenticationManager) {
+					this.jwtAuthenticationManager = jwtAuthenticationManager;
+				}
+
+				[AllowAnonymous]
+				[HttpPost("authenticate")]
+				public IActionResult Authenticate([FromBody]UserCred userCred)
+				{
+					string token = jwtAuthenticationManager.Authenticate
+						(userCred.UserName, userCred.Password);
+
+					if (token != null)
+					{
+						return Ok(token);
+					}
+					
+					return Unauthorized();            
+				}
+			}
+
+	--------------------------------------------------
+	- Controller - Add [Authorization] attributes
+	--------------------------------------------------
+		* In Controllers that require a login, add the [Authorization] annotation 
+			- Can be at the Method or Class level			
+
+
+	--------------------------------------------------
+	- Testing in Postman
+	--------------------------------------------------		
+		* Send a post request to /api/login/authentication
+			- In the body (Json), pass { "user": "x", "password": "x" }
+			- If successful, copy the authentication token
+
+		* Send a request to an authenticated route
+			- In the Headers, add "Authorization": "Bearer <token>"
+			- If successful, this should call the method
