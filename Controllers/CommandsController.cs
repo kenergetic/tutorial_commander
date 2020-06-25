@@ -29,6 +29,7 @@ namespace Commander.Controllers
 
         // GET api/commands
         [HttpGet]
+        [Authorize(Roles = "Administrator, User")]
         public ActionResult<IEnumerable<CommandReadDto>> GetAllCommands() 
         {
             var commandItems = _repository.GetAllCommands();

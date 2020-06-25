@@ -825,3 +825,15 @@ https://www.youtube.com/watch?v=vWkPdurauaA
 		* Send a request to an authenticated route
 			- In the Headers, add "Authorization": "Bearer <token>"
 			- If successful, this should call the method
+
+
+	--------------------------------------------------
+	- Applying roles to Authorization
+	--------------------------------------------------		
+		* A controller's annotation can optionally contain one or more roles
+			ex: 
+        		[Authorize(Roles = "Administrator, User")]
+
+		* When creating a JWT for a user, roles can be added through the token's claims
+			ex: 
+				new Claim(ClaimTypes.Role, "Administrator")

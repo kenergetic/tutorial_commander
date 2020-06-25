@@ -6,16 +6,16 @@ using System.Security.Claims;
 using System.Text;
 using Microsoft.IdentityModel.Tokens;
 
-namespace Commander
+namespace Commander.Auth
 {
     public class JwtAuthenticationManager : IJwtAuthenticationManager
     {
-        // TODO: Move this to the database
-        private readonly IDictionary<string, string> users = new Dictionary<string, string>
-        {
-            { "admin", "pass" },
-            { "user", "pass" }
+        // TODO: Move this to a database
+        private readonly List<User> users = new List<User> {
+            new User { UserName = "admin", Password = "pass", Role = "Administrator" },
+            new User { UserName = "user", Password = "pass", Role = "User" }
         };
+
         private readonly string key;
 
 
@@ -27,10 +27,11 @@ namespace Commander
 
         public string Authenticate(string username, string password)
         {
-            if (!users.Any(u => u.Key == username && u.Value == password))
+            if (!users.Any(u => u.UserName == username && u.Password == password))
             {
                 return null;
             }
+            var user = users.First(u => u.UserName == username && u.Password == password);
 
             var tokenHandler = new JwtSecurityTokenHandler();
             var tokenKey = Encoding.ASCII.GetBytes(key);
@@ -39,7 +40,8 @@ namespace Commander
             var tokenDescriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(new Claim[] {
-                    new Claim(ClaimTypes.Name, username),
+                    new Claim(ClaimTypes.Name, user.UserName),
+                    new Claim(ClaimTypes.Role, user.Role)
                 }),
                 Expires = DateTime.UtcNow.AddHours(24),
                 // How the token is signed
