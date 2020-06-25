@@ -1,10 +1,21 @@
-Quick notes rundown when creating a WebAPI in .Net Core 3.1 
+# tutorial_commander
+An example of setting up a .Net Core 3.1 Web Api combining tutorials by Les Jackson and DotNet Core Central
+
+This should be a very basic rundown of 
+- A Web Api using EntityFramework/SQL Server Express
+- AutoMapper to map the Models to DTOs
+- Authentication and Authorization using JWTs and AspNetCore Authenticaiton to handle it
+- All kinds of Web Api things that I was clueless about when I spun up an API from the void years ago
+
 
 From Les Jackson's youtube video on Web API in .Net Core 3.1:
 https://www.youtube.com/watch?v=fmvcAzHpsk8
 
 From DotNet Core Central's video on JWT authentication:
 https://www.youtube.com/watch?v=vWkPdurauaA
+
+# Quick notes I took when creating this app
+
 
 
 ****************************************************************************
