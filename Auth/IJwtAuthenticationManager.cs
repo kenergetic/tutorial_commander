@@ -1,4 +1,4 @@
-namespace Commander
+namespace Commander.Auth
 {
     public interface IJwtAuthenticationManager
     {
